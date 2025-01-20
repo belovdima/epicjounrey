@@ -16,7 +16,8 @@ export const addMarkerToMap = (
     map: mapboxgl.Map,
     lng: number,
     lat: number,
-    description?: string
+    description?: string,
+    onClick?: () => void
 ): mapboxgl.Marker => {
     const marker = new mapboxgl.Marker()
         .setLngLat([lng, lat])
@@ -24,6 +25,14 @@ export const addMarkerToMap = (
             new mapboxgl.Popup().setHTML(`<p>${description || "Маркер"}</p>`)
         )
         .addTo(map);
+
+    if (onClick) {
+        // Добавляем обработчик клика на сам маркер
+        marker.getElement().addEventListener("click", (e) => {
+            e.stopPropagation(); // Остановить всплытие события, чтобы карта не обрабатывала этот клик
+            onClick();
+        });
+    }
 
     return marker;
 };
@@ -36,7 +45,7 @@ export const addInteractiveMarkers = (
     dispatch: AppDispatch
 ) => {
     map.on("click", (event) => {
-        event.preventDefault(); // Предотвращаем потенциальное поведение по умолчанию
+        event.preventDefault();
         const { lng, lat } = event.lngLat;
 
         const id = `${lng}-${lat}-${Date.now()}`;
@@ -48,7 +57,10 @@ export const addInteractiveMarkers = (
         };
 
         // Добавляем маркер на карту
-        addMarkerToMap(map, lng, lat, newMarker.description);
+        addMarkerToMap(map, lng, lat, newMarker.description, () => {
+            console.log(`Клик по маркеру: ${newMarker.id}`);
+            // Здесь можно реализовать, например, открытие формы редактирования
+        });
 
         // Обновляем Redux-состояние
         dispatch(addMarker(newMarker));
