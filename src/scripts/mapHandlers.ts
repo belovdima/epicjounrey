@@ -1,4 +1,6 @@
 import mapboxgl from "mapbox-gl";
+import { AppDispatch } from "../redux/store";
+import { addMarker } from "../redux/slices/markersSlice";
 
 interface MarkerData {
     id: string;
@@ -10,7 +12,7 @@ interface MarkerData {
 /**
  * Добавить маркер на карту
  */
-export const addMarker = (
+export const addMarkerToMap = (
     map: mapboxgl.Map,
     lng: number,
     lat: number,
@@ -29,11 +31,9 @@ export const addMarker = (
 /**
  * Обработчик кликов для добавления маркеров
  */
-
 export const addInteractiveMarkers = (
     map: mapboxgl.Map,
-    markers: MarkerData[],
-    setMarkers: React.Dispatch<React.SetStateAction<MarkerData[]>>
+    dispatch: AppDispatch
 ) => {
     map.on("click", (event) => {
         event.preventDefault(); // Предотвращаем потенциальное поведение по умолчанию
@@ -48,9 +48,9 @@ export const addInteractiveMarkers = (
         };
 
         // Добавляем маркер на карту
-        addMarker(map, lng, lat, newMarker.description);
+        addMarkerToMap(map, lng, lat, newMarker.description);
 
-        // Обновляем состояние маркеров
-        setMarkers((prev) => [...prev, newMarker]);
+        // Обновляем Redux-состояние
+        dispatch(addMarker(newMarker));
     });
 };
