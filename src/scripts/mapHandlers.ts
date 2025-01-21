@@ -1,12 +1,12 @@
 import mapboxgl from "mapbox-gl";
 import { AppDispatch } from "../redux/store";
-import { addMarker } from "../redux/slices/markersSlice";
+import { addMarker, removeMarker } from "../redux/slices/markersSlice";
 
 interface MarkerData {
     id: string;
     lng: number;
     lat: number;
-    description?: string;
+    description: string;
 }
 
 /**
@@ -16,36 +16,47 @@ export const addMarkerToMap = (
     map: mapboxgl.Map,
     lng: number,
     lat: number,
-    description?: string,
-    onClick?: () => void
+    description: string,
+    onDelete: () => void
 ): mapboxgl.Marker => {
+    // Создаём popup
+    const popup = new mapboxgl.Popup({
+        closeButton: true,
+        closeOnClick: false, // Popup останется открытым при клике на маркер
+    }).setHTML(`
+        <div>
+            <p>${description}</p>
+            <button id="delete-marker-${lng}-${lat}">Удалить</button>
+        </div>
+    `);
+
+    // Создаём маркер и связываем с popup
     const marker = new mapboxgl.Marker()
         .setLngLat([lng, lat])
-        .setPopup(
-            new mapboxgl.Popup().setHTML(`<p>${description || "Маркер"}</p>`)
-        )
+        .setPopup(popup) // Привязываем popup к маркеру
         .addTo(map);
 
-    if (onClick) {
-        // Добавляем обработчик клика на сам маркер
-        marker.getElement().addEventListener("click", (e) => {
-            e.stopPropagation(); // Остановить всплытие события, чтобы карта не обрабатывала этот клик
-            onClick();
-        });
-    }
+    // Обработчик для удаления маркера
+    popup.on("open", () => {
+        const deleteButton = document.getElementById(
+            `delete-marker-${lng}-${lat}`
+        );
+        if (deleteButton) {
+            deleteButton.onclick = (e) => {
+                e.stopPropagation(); // Останавливаем всплытие
+                onDelete();
+                marker.remove(); // Удаляем маркер с карты
+            };
+        }
+    });
 
     return marker;
 };
-
-/**
- * Обработчик кликов для добавления маркеров
- */
 export const addInteractiveMarkers = (
     map: mapboxgl.Map,
     dispatch: AppDispatch
 ) => {
     map.on("click", (event) => {
-        event.preventDefault();
         const { lng, lat } = event.lngLat;
 
         const id = `${lng}-${lat}-${Date.now()}`;
@@ -58,8 +69,7 @@ export const addInteractiveMarkers = (
 
         // Добавляем маркер на карту
         addMarkerToMap(map, lng, lat, newMarker.description, () => {
-            console.log(`Клик по маркеру: ${newMarker.id}`);
-            // Здесь можно реализовать, например, открытие формы редактирования
+            dispatch(removeMarker(newMarker.id)); // Удаляем из Redux
         });
 
         // Обновляем Redux-состояние
